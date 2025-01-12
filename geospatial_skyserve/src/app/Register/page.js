@@ -35,7 +35,7 @@ export default function Register() {
 
     try{
 
-      const url = "http://localhost:8080/api/auth/signup";
+      const url = "http://localhost:8080/auth/signup";
 
       const response = await fetch(url,{
         method: "POST",
