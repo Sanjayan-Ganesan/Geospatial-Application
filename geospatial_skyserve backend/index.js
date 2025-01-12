@@ -10,6 +10,8 @@ const ProductRouter = require('./Routes/ProductRouter')
 require('dotenv').config();
 require('./Models/db')
 
+app.use(cors());
+
 const PORT = process.env.PORT || 8080;
 
 app.get('/ping',(req,res)=>{
@@ -17,7 +19,7 @@ app.get('/ping',(req,res)=>{
 })
 
 app.use(bodyParser.json());
-app.use(cors());
+
 app.use('/auth',AuthRouter)
 app.use('/products',ProductRouter)
 
