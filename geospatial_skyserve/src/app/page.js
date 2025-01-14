@@ -17,16 +17,55 @@ export default function Home() {
     }));
   };
 
-  const handleLogin = (e) =>{
+  const handleSubmit = async (e) => {
     e.preventDefault();
-  }
+    const { email, password } = loginInfo;
 
+    if (!email) {
+      alert('Please Enter Email');
+      return;
+    } else if (!password) {
+      alert('Please Enter Password');
+      return;
+    }
+
+    try {
+      const url = "http://localhost:8080/auth/login";
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginInfo),
+      });
+
+      const result = await response.json();
+      const { success, message, jwtToken, name, error } = result;
+
+      if (success) {
+        alert(message);
+        localStorage.setItem('jwtToken',jwtToken);
+        localStorage.setItem('loggedInUser',name);
+
+        window.location.href = "/geospatial-app";
+        // Use the router to navigate
+      } else if (error) {
+        const details = error?.details[0].message;
+        alert(details);
+      } else if (!success) {
+        alert(message);
+      }
+    } catch (err) {
+      console.log(err, "Error Occurred");
+    }
+  };
   useEffect(() => {
     // This useEffect makes sure nothing unexpected happens on the client side
   }, []);
 
   return (
-    <form className="login" onSubmit={handleLogin}>
+    <form className="login" onSubmit={handleSubmit}>
       <h2>Welcome, User!</h2>
       <p>Please log in</p>
       <input 

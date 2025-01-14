@@ -2,13 +2,15 @@
 
 import '../register/register.css';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/router'; // Correct import for `useRouter`
 
 export default function Register() {
+  // Initialize the router
   const [RegisterInfo, setRegisterInfo] = useState({
     name: '',
     email: '',
-    password: '',// Added state for confirm password
+    password: '',
   });
 
   const handleChange = (e) => {
@@ -21,36 +23,46 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const {name,email,password} = RegisterInfo;
-    if(!name){
+    const { name, email, password } = RegisterInfo;
+
+    if (!name) {
       alert('Please Enter User Name');
       return;
-    }else if(!email){
+    } else if (!email) {
       alert('Please Enter Email');
       return;
-    }else if(!password){
+    } else if (!password) {
       alert('Please Enter Password');
       return;
     }
 
-    try{
-
+    try {
       const url = "http://localhost:8080/auth/signup";
 
-      const response = await fetch(url,{
+      const response = await fetch(url, {
         method: "POST",
-        headers:{
-          'Content-Type':'application/json'
+        headers: {
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(RegisterInfo)
+        body: JSON.stringify(RegisterInfo),
       });
+
       const result = await response.json();
-      console.log(result)
+      const { success, message, error } = result;
 
-    } catch(err){
-      console.log(err,"Error Occured")
+      if (success) {
+        alert(message);
+        window.location.href = "/";
+        // Use the router to navigate
+      } else if (error) {
+        const details = error?.details[0].message;
+        alert(details);
+      } else if (!success) {
+        alert(message);
+      }
+    } catch (err) {
+      console.log(err, "Error Occurred");
     }
-
   };
 
   return (
