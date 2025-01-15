@@ -20,8 +20,11 @@ export default function GeospatialApplication() {
   });
   const [geoData, setGeoData] = useState(null);
   const [layerVisible, setLayerVisible] = useState(false);
+  const [popupText, setPopupText] = useState('');
 
-  //const Token = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2FuamF5MTEzIiwiYSI6ImNtNXV4aTR3MTAxNnUyaXF3bjRpbHE2c3MifQ.5WKy6qWxY5BWgc1sMD1-jQ';
+  const handlePopupTextChange = (e) => {
+    setPopupText(e.target.value);
+  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -119,7 +122,12 @@ export default function GeospatialApplication() {
         {newPlace && (
           <Marker position={[newPlace.lat, newPlace.long]}>
             <Popup>
-              A new place.
+              <input 
+                type="text" 
+                value={popupText} 
+                onChange={handlePopupTextChange} 
+                placeholder="Enter text" 
+              />
             </Popup>
           </Marker>
         )}
@@ -148,7 +156,16 @@ export default function GeospatialApplication() {
               return (
                 <Marker key={index} position={[lat, lng]}>
                   <Popup>
-                    {feature.properties.name}
+                    <input 
+                      type="text" 
+                      value={feature.properties.name || ''} 
+                      onChange={(e) => {
+                        const updatedGeoData = { ...geoData };
+                        updatedGeoData.features[index].properties.name = e.target.value;
+                        setGeoData(updatedGeoData);
+                      }} 
+                      placeholder="Enter text" 
+                    />
                   </Popup>
                 </Marker>
               );

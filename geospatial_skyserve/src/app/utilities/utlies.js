@@ -15,13 +15,13 @@ export function parseGeoJSON(data) {
         console.log('Parsed data:', parsedData); // Log the parsed data
 
         if (parsedData.type !== 'FeatureCollection' || !Array.isArray(parsedData.features)) {
-            console.error('Invalid GeoJSON format: missing FeatureCollection type or features array', parsedData);
+            alert('Invalid GeoJSON format: missing FeatureCollection type or features array', parsedData);
             return null;
         }
 
         parsedData.features.forEach((feature, index) => {
             if (!feature.geometry || !feature.geometry.type || !feature.geometry.coordinates) {
-                console.error(`Invalid GeoJSON: Missing geometry attributes in feature at index ${index}`, feature);
+                alert(`Invalid GeoJSON: Missing geometry attributes in feature at index ${index}`, feature);
                 return null;
             }
         });
