@@ -3,13 +3,16 @@
 // Parse GeoJSON data
 export function parseGeoJSON(data) {
     try {
+        console.log('Data:', data); // Log the data variable
         if (typeof data !== 'string') {
             console.error('Expected string data but received:', typeof data, data);
             return null;
         }
 
         const trimmedData = data.trim();
+        console.log('Trimmed data:', trimmedData); // Log the trimmed data
         const parsedData = JSON.parse(trimmedData);
+        console.log('Parsed data:', parsedData); // Log the parsed data
 
         if (parsedData.type !== 'FeatureCollection' || !Array.isArray(parsedData.features)) {
             console.error('Invalid GeoJSON format: missing FeatureCollection type or features array', parsedData);
@@ -33,34 +36,59 @@ export function parseGeoJSON(data) {
 
 // Calculate viewport bounds from GeoJSON data
 export function fitBoundsFromGeoJSON(geojson) {
-    const coordinates = geojson.features.flatMap((feature) => {
-        if (feature.geometry.type === 'Point') {
-            return [feature.geometry.coordinates];
-        } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiPoint') {
-            return feature.geometry.coordinates;
-        } else if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiLineString') {
-            return feature.geometry.coordinates.flat();
-        } else if (feature.geometry.type === 'MultiPolygon') {
-            return feature.geometry.coordinates.flat(2);
+    const coordinates = [];
+
+    geojson.features.forEach((feature) => {
+        switch (feature.geometry.type) {
+            case 'Point':
+                coordinates.push(feature.geometry.coordinates);
+                break;
+            case 'LineString':
+            case 'MultiPoint':
+                feature.geometry.coordinates.forEach((coord) => coordinates.push(coord));
+                break;
+            case 'Polygon':
+            case 'MultiLineString':
+                feature.geometry.coordinates.forEach((ring) => ring.forEach((coord) => coordinates.push(coord)));
+                break;
+            case 'MultiPolygon':
+                feature.geometry.coordinates.forEach((polygon) =>
+                    polygon.forEach((ring) => ring.forEach((coord) => coordinates.push(coord)))
+                );
+                break;
+            default:
+                break;
         }
-        return [];
     });
 
-    if (coordinates.length === 0) return { latitude: 0, longitude: 0, zoom: 1 };
+    const validCoordinates = coordinates.filter(coord => 
+        Array.isArray(coord) && coord.length === 2 && 
+        typeof coord[0] === 'number' && typeof coord[1] === 'number'
+    );
 
-    const lats = coordinates.map(coord => coord[1]);
-    const lngs = coordinates.map(coord => coord[0]);
+    if (validCoordinates.length === 0) {
+        console.error('No valid coordinates found in GeoJSON data');
+        return null;
+    }
 
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
+    const bounds = validCoordinates.reduce((acc, coord) => {
+        return [
+            Math.min(acc[0], coord[0]),
+            Math.min(acc[1], coord[1]),
+            Math.max(acc[2], coord[0]),
+            Math.max(acc[3], coord[1])
+        ];
+    }, [Infinity, Infinity, -Infinity, -Infinity]);
 
-    const latitude = (minLat + maxLat) / 2;
-    const longitude = (minLng + maxLng) / 2;
-    const latRange = maxLat - minLat;
-    const lonRange = maxLng - minLng;
-    const zoom = Math.max(1, Math.log(Math.min(latRange, lonRange)) + 5); // Calculate dynamic zoom
+    if (bounds.includes(Infinity) || bounds.includes(-Infinity)) {
+        console.error('Invalid bounds calculated from GeoJSON data');
+        return null;
+    }
+
+    const latitude = (bounds[1] + bounds[3]) / 2;
+    const longitude = (bounds[0] + bounds[2]) / 2;
+    const zoom = 10;
 
     return { latitude, longitude, zoom };
 }
+

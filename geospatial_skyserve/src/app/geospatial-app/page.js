@@ -1,26 +1,27 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import ReactMapGL, { Marker } from 'react-map-gl';
+import React, { useState, useCallback, useEffect,useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents,FeatureGroup } from 'react-leaflet';
+import { EditControl } from 'react-leaflet-draw';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-draw/dist/leaflet.draw.css';
+import L from 'leaflet';
 import '../geospatial-app/geospatial.css';
-import "mapbox-gl/dist/mapbox-gl.css";
-import { parseGeoJSON, fitBoundsFromGeoJSON } from '../utilities/utlies';
+import { parseGeoJSON, fitBoundsFromGeoJSON } from '../utilities/utlies'; 
 import * as GeoTIFF from 'geotiff';
-import { Room } from '@material-ui/icons';
 //import kmlparser from 'kml-parser';
 
 export default function GeospatialApplication() {
   const [loggedInUser, setLoggedInUser] = useState('');
   const [newPlace, setNewPlace] = useState(null);
   const [viewport, setViewport] = useState({
-    latitude: 12.8452,
-    longitude: 77.6602,
-    zoom: 5
+    center: [12.9716, 77.5946],
+    zoom: 13,
   });
   const [geoData, setGeoData] = useState(null);
   const [layerVisible, setLayerVisible] = useState(false);
 
-  const Token = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2FuamF5MTEzIiwiYSI6ImNtNXV4aTR3MTAxNnUyaXF3bjRpbHE2c3MifQ.5WKy6qWxY5BWgc1sMD1-jQ';
+  //const Token = process.env.REACT_APP_MAPBOX_TOKEN || 'pk.eyJ1Ijoic2FuamF5MTEzIiwiYSI6ImNtNXV4aTR3MTAxNnUyaXF3bjRpbHE2c3MifQ.5WKy6qWxY5BWgc1sMD1-jQ';
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -49,8 +50,9 @@ export default function GeospatialApplication() {
 
           if (parsedData) {
             const { latitude, longitude, zoom } = fitBoundsFromGeoJSON(parsedData);
-            setViewport({ latitude, longitude, zoom });
+            setViewport({ center: [latitude, longitude], zoom }); 
             setLayerVisible(true);
+            console.log({ center: [latitude, longitude], zoom });
           }
         } catch (error) {
           console.error('Error parsing file:', error);
@@ -60,15 +62,6 @@ export default function GeospatialApplication() {
     }
   };
 
-  const handleDblClick = (e) => {
-    const lati = e.lngLat.lat;
-    const long = e.lngLat.lng;
-    setNewPlace({
-      lat: lati,
-      long: long
-    });
-  };
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const user = localStorage.getItem('loggedInUser');
@@ -76,17 +69,21 @@ export default function GeospatialApplication() {
     }
   }, []);
 
-  const onViewportChange = useCallback((newViewport) => {
-    setViewport({ ...viewport, ...newViewport });
-  }, [viewport]);
+  const handleMapClick = (e) => {
+    setNewPlace({
+      lat: e.latlng.lat,
+      long: e.latlng.lng,
+    });
+  };
 
-  const handleDoubleClick = useCallback((newViewport) => {
-    setViewport({ ...viewport, ...newViewport,zoom: newViewport.zoom + 1  });
-  }, [viewport]);
+  const MapEvents = () => {
+    useMapEvents({
+      click: handleMapClick,
+    });
+    return null;
+  };
 
-  const created = (e) =>{
-    console.log(e)
-  }
+  const featureGroupRef = useRef(null);
 
   return (
     <div className="container w-100 Wrapper">
@@ -114,30 +111,54 @@ export default function GeospatialApplication() {
         </div>
 
         <div className='MapsSection'>
-          <ReactMapGL
-            {...viewport}
-            mapboxAccessToken={Token}
-            width="100%"
-            height="100%"
-            transitionDuration="100"
-            mapStyle="mapbox://styles/sanjay113/cm5v4lf1a000v01r3d4y9hglf"
-            onDrag={onViewportChange}
-            onDblClick={handleDblClick}
-            onZoomEnd={handleDoubleClick}
-            >
-
-            {newPlace && (
-              <Marker
-                latitude={newPlace.lat}
-                longitude={newPlace.long}
-                offsetTop={-7 * viewport.zoom}
-                offsetLeft={-3.5 * viewport.zoom}
-              >
-                <Room style = {{fontSize: 25,color:"tomato",cursor:'pointer'}}/>
-              </Marker>
-            )}
-          </ReactMapGL>
-        </div>
+      <MapContainer key={`${viewport.center}-${viewport.zoom}-${geoData ? geoData.features.length : 0}`} center={viewport.center} zoom={viewport.zoom} style={{ height: "100%", width: "100%" }}>
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <MapEvents />
+        {newPlace && (
+          <Marker position={[newPlace.lat, newPlace.long]}>
+            <Popup>
+              A new place.
+            </Popup>
+          </Marker>
+        )}
+        <FeatureGroup ref={featureGroupRef}>
+        <EditControl
+          position='topright'
+          onCreated={(e) => {
+            const { layerType, layer } = e;
+            if (layerType === 'marker') {
+              const { _latlng } = layer;
+              console.log('Marker created at:', _latlng);
+            }
+          }}
+          draw={{
+            rectangle: true,
+            polyline: true,
+            polygon: true,
+            circle: true,
+            marker: true,
+          }}
+        />
+        {geoData && geoData.features.map((feature, index) => {
+            const { geometry } = feature;
+            if (geometry.type === 'Point') {
+              const [lng, lat] = geometry.coordinates;
+              return (
+                <Marker key={index} position={[lat, lng]}>
+                  <Popup>
+                    {feature.properties.name}
+                  </Popup>
+                </Marker>
+              );
+            }
+            return null;
+          })}
+        </FeatureGroup>
+        
+      </MapContainer>
+    </div>
       </div>
     </div>
   );
